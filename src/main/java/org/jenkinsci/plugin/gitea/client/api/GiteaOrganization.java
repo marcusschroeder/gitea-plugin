@@ -60,6 +60,11 @@ public class GiteaOrganization extends GiteaOwner {
         setUsername(login);
     }
 
+    @Override
+    public void setLoginName(String loginName) {
+        setUsername(loginName);
+    }
+
     public String getDescription() {
         return description;
     }

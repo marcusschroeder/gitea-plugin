@@ -41,6 +41,11 @@ public class GiteaUser extends GiteaOwner implements Cloneable {
     }
 
     @Override
+    public void setLoginName(String loginName) {
+        setUsername(loginName);
+    }
+
+    @Override
     public String toString() {
         return "GiteaUser{" +
                 "id=" + getId() +

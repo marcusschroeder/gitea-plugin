@@ -25,7 +25,9 @@ package org.jenkinsci.plugin.gitea.client.impl;
 
 import com.damnhandy.uri.template.UriTemplate;
 import com.damnhandy.uri.template.UriTemplateBuilder;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.util.StdDateFormat;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.FileNotFoundException;
@@ -56,26 +58,7 @@ import jenkins.model.Jenkins;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
-import org.jenkinsci.plugin.gitea.client.api.GiteaAnnotatedTag;
-import org.jenkinsci.plugin.gitea.client.api.GiteaAuth;
-import org.jenkinsci.plugin.gitea.client.api.GiteaAuthToken;
-import org.jenkinsci.plugin.gitea.client.api.GiteaAuthUser;
-import org.jenkinsci.plugin.gitea.client.api.GiteaBranch;
-import org.jenkinsci.plugin.gitea.client.api.GiteaCommitDetail;
-import org.jenkinsci.plugin.gitea.client.api.GiteaCommitStatus;
-import org.jenkinsci.plugin.gitea.client.api.GiteaConnection;
-import org.jenkinsci.plugin.gitea.client.api.GiteaHook;
-import org.jenkinsci.plugin.gitea.client.api.GiteaHttpStatusException;
-import org.jenkinsci.plugin.gitea.client.api.GiteaIssue;
-import org.jenkinsci.plugin.gitea.client.api.GiteaIssueState;
-import org.jenkinsci.plugin.gitea.client.api.GiteaOrganization;
-import org.jenkinsci.plugin.gitea.client.api.GiteaOwner;
-import org.jenkinsci.plugin.gitea.client.api.GiteaPullRequest;
-import org.jenkinsci.plugin.gitea.client.api.GiteaRelease;
-import org.jenkinsci.plugin.gitea.client.api.GiteaRepository;
-import org.jenkinsci.plugin.gitea.client.api.GiteaTag;
-import org.jenkinsci.plugin.gitea.client.api.GiteaUser;
-import org.jenkinsci.plugin.gitea.client.api.GiteaVersion;
+import org.jenkinsci.plugin.gitea.client.api.*;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -87,9 +70,26 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 class DefaultGiteaConnection implements GiteaConnection {
 
     private final String serverUrl;
-
     private final GiteaAuth authentication;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = createObjectMapper();
+
+    private static ObjectMapper createObjectMapper() {
+        ObjectMapper m = new ObjectMapper();
+        try {
+            // Jackson 2.7+
+            m.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+        } catch (NoSuchFieldError e) {
+            try {
+                // Jackson < 2.7
+                Field field = PropertyNamingStrategy.class.getField("CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES");
+                m.setPropertyNamingStrategy((PropertyNamingStrategy) field.get(null));
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                // Fallback to default if all else fails
+            }
+        }
+        m.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, !org.jenkinsci.plugin.gitea.client.api.Gitea.IGNORE_UNKNOWN_PROPERTIES);
+        return m;
+    }
 
     DefaultGiteaConnection(@NonNull String serverUrl,
                            @NonNull GiteaAuth authentication) {

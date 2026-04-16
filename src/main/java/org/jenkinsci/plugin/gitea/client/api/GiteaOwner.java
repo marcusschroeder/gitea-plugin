@@ -65,6 +65,11 @@ public class GiteaOwner extends GiteaObject<GiteaOwner> {
         this.login = login;
     }
 
+    @JsonProperty("login_name")
+    public void setLoginName(String loginName) {
+        this.login = loginName;
+    }
+
     public String getFullName() {
         return fullName;
     }

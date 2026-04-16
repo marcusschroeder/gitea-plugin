@@ -23,10 +23,13 @@
  */
 package org.jenkinsci.plugin.gitea;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import hudson.ExtensionPoint;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Locale;
@@ -41,7 +44,25 @@ public abstract class GiteaWebhookHandler<E extends SCMEvent<P>, P extends Gitea
     private final String eventName;
     private final Class<E> eventClass;
     private final Class<P> payloadClass;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = createObjectMapper();
+
+    private static ObjectMapper createObjectMapper() {
+        ObjectMapper m = new ObjectMapper();
+        try {
+            // Jackson 2.7+
+            m.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+        } catch (NoSuchFieldError e) {
+            try {
+                // Jackson < 2.7
+                Field field = PropertyNamingStrategy.class.getField("CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES");
+                m.setPropertyNamingStrategy((PropertyNamingStrategy) field.get(null));
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                // Fallback to default if all else fails
+            }
+        }
+        m.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, !org.jenkinsci.plugin.gitea.client.api.Gitea.IGNORE_UNKNOWN_PROPERTIES);
+        return m;
+    }
 
     protected GiteaWebhookHandler(String eventName, Class<E> eventClass, Class<P> payloadClass) {
         this.eventName = eventName;
